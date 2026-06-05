@@ -1,7 +1,7 @@
 {
   "name": "Nucleo Sommozzatori",
   "short_name": "Sommozzatori",
-  "start_url": "./Gestione_Attrezzature_Sommozzatori.html",
+  "start_url": "./Gestione_Attrezzatura_Sommozzatori.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f0f4f8",
