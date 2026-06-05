@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Nucleo Sommozzatori - Login</title>
-  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Nucleo%20Sommozzatori%22%2C%22short_name%22%3A%22Sommozzatori%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f0f4f8%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI%2BCjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMzIiIGZpbGw9IiMwZjE3MmEiIC8%2BCjx0ZXh0IHg9IjM2IiB5PSIxMjAiIGZvbnQtc2l6ZT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZpbGw9IiNmZmYiIGZvbnQtd2VpZ2h0PSJib2xkIj7wn6eWPC90ZXh0Pgo8L3N2Zz4%3D%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+  <!-- MANIFEST CORRETTO: ora punta a un file .json esterno -->
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -52,7 +53,6 @@
     <input type="password" id="confirmPassword" placeholder="Conferma password">
     <button class="btn btn-dark" id="setPasswordBtn" style="width:100%">Imposta Password e Accedi</button>
   </div>
-  <!-- RIGA RIMOSSA: amministratore admin/admin -->
 </div>
 
 <div id="appScreen" class="container hidden">
@@ -115,7 +115,15 @@
       updateServiceWorker();
     }
 
-    // ---------- SERVICE WORKER ----------
+    // ---------- SERVICE WORKER (REGISTRAZIONE STANDARD) ----------
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        console.log('Service Worker registrato:', reg);
+      }).catch(err => {
+        console.error('Errore registrazione SW:', err);
+      });
+    }
+
     function updateServiceWorker() {
       if (!navigator.serviceWorker?.controller) return;
       if (!currentUser) {
@@ -135,41 +143,6 @@
         });
       }
       navigator.serviceWorker.controller.postMessage({ type: 'SCHEDULE_NOTIFICATIONS', attrezzature: items });
-    }
-
-    if ('serviceWorker' in navigator) {
-      const swScript = `
-        const TIMERS = new Map();
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('activate', e => e.waitUntil(clients.claim()));
-        self.addEventListener('message', e => {
-          if (e.data?.type === 'SCHEDULE_NOTIFICATIONS') schedule(e.data.attrezzature);
-        });
-        function schedule(items) {
-          TIMERS.forEach(t => clearTimeout(t)); TIMERS.clear();
-          const now = Date.now();
-          items.forEach(it => {
-            if (!it.id || !it.scad) return;
-            const scad = new Date(it.scad + 'T00:00:00').getTime();
-            [-60, -30, -10, 0].forEach(day => {
-              const delay = scad + day*86400000 - now;
-              if (delay > 0) {
-                const id = setTimeout(() => {
-                  const giorni = day === 0 ? 'SCADUTA OGGI' : (Math.abs(day) + ' giorni');
-                  self.registration.showNotification('⚠️ Attrezzatura ' + giorni, {
-                    body: it.persona + ' - ' + it.tipo + ' (' + it.matricola + ')\\nScadenza: ' + it.scad,
-                    icon: '🔔', tag: 'attr-'+it.id, requireInteraction: true, vibrate: [200,100,200]
-                  });
-                  TIMERS.delete(it.id + '_' + day);
-                }, delay);
-                TIMERS.set(it.id + '_' + day, id);
-              }
-            });
-          });
-        }
-      `;
-      const blob = new Blob([swScript], {type:'application/javascript'});
-      navigator.serviceWorker.register(URL.createObjectURL(blob));
     }
 
     // ---------- UI ELEMENTI ----------
